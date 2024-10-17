@@ -4,6 +4,19 @@ import crypto from 'crypto-js'
 import type { AuthenticateOptions, StrategyVerifyCallback } from 'remix-auth'
 import { Strategy } from 'remix-auth'
 
+export type EmailAuthenticateOptions = AuthenticateOptions & {
+    /**
+     * Specifies what fields are included in the magic link 
+     * This can be left empty to ensure no fields are included
+     * Takes precedence over blockedFormFields
+     */
+    allowedFormFields?: string[];
+    /**
+     * Blocks specified fields from being included in magic link  
+     */
+    blockedFormFields?: string[];
+}
+
 export type SendEmailOptions<User> = {
   emailAddress: string
   magicLink: string
@@ -181,7 +194,7 @@ export class EmailLinkStrategy<User> extends Strategy<
   public async authenticate(
     request: Request,
     sessionStorage: SessionStorage,
-    options: AuthenticateOptions
+    options: EmailAuthenticateOptions
   ): Promise<User> {
     const session = await sessionStorage.getSession(
       request.headers.get('Cookie')
@@ -192,6 +205,14 @@ export class EmailLinkStrategy<User> extends Strategy<
 
     // Convert the URLSearchParams to FormData
     for (const [name, value] of form) {
+      if (options.allowedFormFields) {
+        if (!options.allowedFormFields?.includes(name)){
+            continue;
+        }
+      }
+      else if (options.blockedFormFields?.includes(name)) {
+          continue;
+      }
       formData.append(name, value)
     }
 
